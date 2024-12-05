@@ -1,0 +1,21 @@
+ros2 launch ros2_control_demo_example_1 rrbot.launch.py
+
+ros2 control list_hardware_interfaces
+    command interfaces
+        joint1/position [available] [claimed]
+        joint2/position [available] [claimed]
+    state interfaces
+        joint1/position
+        joint2/position
+
+ros2 control list_controllers
+    joint_state_broadcaster[joint_state_broadcaster/JointStateBroadcaster] active
+    forward_position_controller[forward_command_controller/ForwardCommandController] active
+
+set manual
+ros2 topic pub /forward_position_controller/commands std_msgs/msg/Float64MultiArray "data:
+- 0.5
+- 0.5"
+
+ros2 topic echo /joint_states
+ros2 topic echo /dynamic_joint_states
