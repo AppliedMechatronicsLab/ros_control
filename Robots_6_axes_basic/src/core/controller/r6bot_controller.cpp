@@ -33,6 +33,10 @@ RobotController::RobotController() : controller_interface::ControllerInterface()
 
 controller_interface::CallbackReturn RobotController::on_init()
 {
+  auto node = std::make_shared<rclcpp::Node>("on_init");
+
+  RCLCPP_INFO(node->get_logger(), "Son6966 debug on_init");
+
   // should have error handling
   joint_names_ = auto_declare<std::vector<std::string>>("joints", joint_names_);
   command_interface_types_ =
@@ -49,14 +53,24 @@ controller_interface::CallbackReturn RobotController::on_init()
 controller_interface::InterfaceConfiguration RobotController::command_interface_configuration()
   const
 {
+  auto node = std::make_shared<rclcpp::Node>("command_interface_configuration");
+  RCLCPP_INFO(node->get_logger(), "Son6966 debug command_interface_configuration");
+
   controller_interface::InterfaceConfiguration conf = {config_type::INDIVIDUAL, {}};
 
   conf.names.reserve(joint_names_.size() * command_interface_types_.size());
+
+  RCLCPP_INFO(node->get_logger(), "Son6966 joint_names_.size(): %d", joint_names_.size());
+  RCLCPP_INFO(node->get_logger(), "Son6966 command_interface_types_.size(): %d", command_interface_types_.size());
+
   for (const auto & joint_name : joint_names_)
   {
     for (const auto & interface_type : command_interface_types_)
     {
       conf.names.push_back(joint_name + "/" + interface_type);
+      std::string temp = joint_name + "/" + interface_type;
+      RCLCPP_INFO(node->get_logger(), "Son6966 command_interface_configuration: %s", temp.c_str());
+      
     }
   }
 
@@ -65,6 +79,9 @@ controller_interface::InterfaceConfiguration RobotController::command_interface_
 
 controller_interface::InterfaceConfiguration RobotController::state_interface_configuration() const
 {
+  auto node = std::make_shared<rclcpp::Node>("state_interface_configuration");
+  RCLCPP_INFO(node->get_logger(), "Son6966 debug state_interface_configuration");
+
   controller_interface::InterfaceConfiguration conf = {config_type::INDIVIDUAL, {}};
 
   conf.names.reserve(joint_names_.size() * state_interface_types_.size());
@@ -81,22 +98,31 @@ controller_interface::InterfaceConfiguration RobotController::state_interface_co
 
 controller_interface::CallbackReturn RobotController::on_configure(const rclcpp_lifecycle::State &)
 {
+  auto node = std::make_shared<rclcpp::Node>("on_configure");
+  RCLCPP_INFO(node->get_logger(), "Son6966 debug on_configure");
+
   auto callback =
     [this](const std::shared_ptr<trajectory_msgs::msg::JointTrajectory> traj_msg) -> void
   {
+    auto node1 = std::make_shared<rclcpp::Node>("on_configure");
+
+    RCLCPP_INFO(node1->get_logger(), "Son6966 rev cmd !!!!!!");
     traj_msg_external_point_ptr_.writeFromNonRT(traj_msg);
     new_msg_ = true;
   };
 
   joint_command_subscriber_ =
-    get_node()->create_subscription<trajectory_msgs::msg::JointTrajectory>(
-      "~/joint_trajectory", rclcpp::SystemDefaultsQoS(), callback);
+    get_node()->create_subscription<trajectory_msgs::msg::JointTrajectory>("~/joint_trajectory", rclcpp::SystemDefaultsQoS(), callback);
 
   return CallbackReturn::SUCCESS;
 }
 
 controller_interface::CallbackReturn RobotController::on_activate(const rclcpp_lifecycle::State &)
 {
+
+  auto node = std::make_shared<rclcpp::Node>("on_activate");
+  RCLCPP_INFO(node->get_logger(), "Son6966 debug on_activate");
+
   // clear out vectors in case of restart
   joint_position_command_interface_.clear();
   joint_velocity_command_interface_.clear();
@@ -123,6 +149,10 @@ void interpolate_point(
   const trajectory_msgs::msg::JointTrajectoryPoint & point_2,
   trajectory_msgs::msg::JointTrajectoryPoint & point_interp, double delta)
 {
+
+  auto node = std::make_shared<rclcpp::Node>("interpolate_point");
+  RCLCPP_INFO(node->get_logger(), "Son6966 debug interpolate_point");
+
   for (size_t i = 0; i < point_1.positions.size(); i++)
   {
     point_interp.positions[i] = delta * point_2.positions[i] + (1.0 - delta) * point_2.positions[i];
@@ -138,6 +168,10 @@ void interpolate_trajectory_point(
   const trajectory_msgs::msg::JointTrajectory & traj_msg, const rclcpp::Duration & cur_time,
   trajectory_msgs::msg::JointTrajectoryPoint & point_interp)
 {
+
+  auto node = std::make_shared<rclcpp::Node>("interpolate_trajectory_point");
+  RCLCPP_INFO(node->get_logger(), "Son6966 debug interpolate_trajectory_point");
+
   double traj_len = traj_msg.points.size();
   auto last_time = traj_msg.points[traj_len - 1].time_from_start;
   double total_time = last_time.sec + last_time.nanosec * 1E-9;
@@ -151,6 +185,10 @@ void interpolate_trajectory_point(
 controller_interface::return_type RobotController::update(
   const rclcpp::Time & time, const rclcpp::Duration & /*period*/)
 {
+
+  auto node = std::make_shared<rclcpp::Node>("RobotController");
+  RCLCPP_INFO(node->get_logger(), "Son6966 debug RobotController::update");
+
   if (new_msg_)
   {
     trajectory_msg_ = *traj_msg_external_point_ptr_.readFromRT();
@@ -161,6 +199,7 @@ controller_interface::return_type RobotController::update(
   if (trajectory_msg_ != nullptr)
   {
     interpolate_trajectory_point(*trajectory_msg_, time - start_time_, point_interp_);
+
     for (size_t i = 0; i < joint_position_command_interface_.size(); i++)
     {
       joint_position_command_interface_[i].get().set_value(point_interp_.positions[i]);
